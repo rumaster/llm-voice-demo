@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Realtime Voice Demo</title>
+  <style>
+    body { font-family: Arial; padding: 30px; }
+    button {
+      padding: 20px 40px;
+      font-size: 18px;
+    }
+    button.recording {
+      background: red;
+      color: white;
+    }
+    #userText, #assistantText {
+      margin-top: 15px;
+      padding: 10px;
+      border: 1px solid #ccc;
+      min-height: 40px;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+
+<h2>Voice Demo</h2>
+
+<button id="talkBtn">Hold to talk</button>
+
+<label style="display:block; margin-top:15px;">
+  <input type="checkbox" id="voiceToggle" />
+  Озвучивать ответ
+</label>
+
+<h3>Вы сказали:</h3>
+<div id="userText"></div>
+
+<h3>Ответ модели:</h3>
+<div id="assistantText"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
