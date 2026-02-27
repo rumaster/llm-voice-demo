@@ -43,7 +43,6 @@ function playNextChunk() {
 }
 
 function enqueueAudio(base64Chunk) {
-  console.log(base64Chunk)
   if (!base64Chunk || typeof base64Chunk !== "string") {
     return;
   }

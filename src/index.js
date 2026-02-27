@@ -45,7 +45,8 @@ wss.on("connection", (clientWs) => {
             model: "gpt-4o-mini-transcribe"
           },
           turn_detection: null,
-          modalities: ["text"]
+          modalities: ["text", "audio"],
+          instructions: "Отвечай только на русском языке, даже если слышишь куски других языков."
         }
       })
     );
@@ -63,7 +64,6 @@ wss.on("connection", (clientWs) => {
 
     if (data.type === "commit") {
       voiceEnabled = data.voice === true;
-      console.log('COMMIT', voiceEnabled)
 
       openaiWs.send(JSON.stringify({
         type: "input_audio_buffer.commit"
@@ -80,9 +80,9 @@ wss.on("connection", (clientWs) => {
 
   openaiWs.on("message", (message) => {
     const event = JSON.parse(message.toString());
+    console.log(event.type, event.transcript)
     switch (event.type) {
       case 'conversation.item.input_audio_transcription.completed':
-        console.log(event.type, event.transcript, event.usage)
         // Распознанная речь пользователя
         clientWs.send(JSON.stringify({
           type: "user_transcript",
@@ -90,7 +90,6 @@ wss.on("connection", (clientWs) => {
         }));
         break;
       case 'response.audio.delta':
-        console.log(event.type, event)
         // Частичный аудио-ответ модели
         clientWs.send(JSON.stringify({
           type: "assistant_audio",
@@ -98,7 +97,6 @@ wss.on("connection", (clientWs) => {
         }));
         break;
       case 'response.text.delta':
-        console.log(event.type, event)
         // Частичный ответ модели
         clientWs.send(JSON.stringify({
           type: "assistant_partial",
@@ -106,7 +104,6 @@ wss.on("connection", (clientWs) => {
         }));
         break;
       case 'response.text.done':
-        console.log(event.type, event.text)
         // Финальный ответ модели
         clientWs.send(JSON.stringify({
           type: "assistant_final",
@@ -114,7 +111,6 @@ wss.on("connection", (clientWs) => {
         }));
         break;
       case 'response.audio_transcript.delta':
-        console.log(event.type, event)
         // Частичный ответ модели
         clientWs.send(JSON.stringify({
           type: "assistant_partial",
@@ -122,7 +118,6 @@ wss.on("connection", (clientWs) => {
         }));
         break;
       case 'response.audio_transcript.done':
-        console.log(event.type, event)
         // Финальный ответ модели
         clientWs.send(JSON.stringify({
           type: "assistant_final",
