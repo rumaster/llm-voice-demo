@@ -55,6 +55,12 @@ wss.on("connection", (clientWs) => {
   clientWs.on("message", (msg) => {
     const data = JSON.parse(msg.toString());
 
+    // Handle ping/pong for keep-alive
+    if (data.type === "ping") {
+      clientWs.send(JSON.stringify({ type: "pong" }));
+      return;
+    }
+
     if (data.type === "audio") {
       openaiWs.send(JSON.stringify({
         type: "input_audio_buffer.append",

@@ -1,6 +1,85 @@
 const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
 const host = window.location.host;
-const ws = new WebSocket(`${protocol}//${host}`);
+
+// === CONNECTION MANAGEMENT ===
+let ws = null;
+let isConnected = false;
+let pingInterval = null;
+const PING_INTERVAL_MS = 10000; // 10 seconds
+const RECONNECT_DELAY_MS = 2000; // 2 seconds delay before reconnect
+
+function connect() {
+  if (ws && (ws.readyState === WebSocket.CONNECTING || ws.readyState === WebSocket.OPEN)) {
+    return; // Already connected or connecting
+  }
+
+  ws = new WebSocket(`${protocol}//${host}`);
+
+  ws.onopen = () => {
+    console.log("WebSocket connected");
+    isConnected = true;
+    updateConnectionUI();
+    startPing();
+  };
+
+  ws.onclose = () => {
+    console.log("WebSocket disconnected");
+    isConnected = false;
+    updateConnectionUI();
+    stopPing();
+    scheduleReconnect();
+  };
+
+  ws.onerror = (error) => {
+    console.error("WebSocket error:", error);
+    // onclose will be called after onerror
+  };
+
+  ws.onmessage = handleMessage;
+}
+
+function startPing() {
+  stopPing(); // Clear any existing interval
+  pingInterval = setInterval(() => {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: "ping" }));
+    }
+  }, PING_INTERVAL_MS);
+}
+
+function stopPing() {
+  if (pingInterval) {
+    clearInterval(pingInterval);
+    pingInterval = null;
+  }
+}
+
+function scheduleReconnect() {
+  console.log(`Reconnecting in ${RECONNECT_DELAY_MS / 1000} seconds...`);
+  setTimeout(() => {
+    console.log("Attempting to reconnect...");
+    connect();
+  }, RECONNECT_DELAY_MS);
+}
+
+function updateConnectionUI() {
+  const statusIndicator = document.getElementById("connectionStatus");
+  if (isConnected) {
+    talkBtn.disabled = false;
+    talkBtn.classList.remove("disabled");
+    if (statusIndicator) {
+      statusIndicator.textContent = "Подключено";
+      statusIndicator.className = "connection-status connected";
+    }
+  } else {
+    talkBtn.disabled = true;
+    talkBtn.classList.add("disabled");
+    if (statusIndicator) {
+      statusIndicator.textContent = "Отключено. Переподключение...";
+      statusIndicator.className = "connection-status disconnected";
+    }
+  }
+}
 
 const talkBtn = document.getElementById("talkBtn");
 const voiceToggle = document.getElementById("voiceToggle");
@@ -47,7 +126,9 @@ function renderHistory() {
 function clearHistory() {
   conversationHistory = [];
   renderHistory();
-  ws.send(JSON.stringify({ type: "clear_history" }));
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: "clear_history" }));
+  }
 }
 
 clearHistoryBtn.onclick = clearHistory;
@@ -136,8 +217,13 @@ function convertPCM16ToFloat32(buffer) {
 
 // === WEBSOCKET EVENTS ===
 
-ws.onmessage = (event) => {
+function handleMessage(event) {
   const data = JSON.parse(event.data);
+
+  if (data.type === "pong") {
+    // Pong received, connection is alive
+    return;
+  }
 
   if (data.type === "user_transcript") {
     userTextEl.textContent = data.text;
@@ -173,12 +259,13 @@ ws.onmessage = (event) => {
   if (data.type === "assistant_audio") {
     enqueueAudio(data.audio);
   }
-};
+}
 
 // === RECORDING ===
 
 async function startRecording() {
   if (isRecording) return;
+  if (!isConnected) return;
 
   stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
@@ -262,3 +349,6 @@ function arrayBufferToBase64(buffer) {
 
   return btoa(binary);
 }
+
+// === INITIALIZE CONNECTION ===
+connect();

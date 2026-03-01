@@ -54,13 +54,32 @@
       font-size: 14px;
       cursor: pointer;
     }
+    .connection-status {
+      display: inline-block;
+      padding: 5px 10px;
+      border-radius: 5px;
+      font-size: 14px;
+      margin-left: 15px;
+    }
+    .connection-status.connected {
+      background-color: #c8e6c9;
+      color: #2e7d32;
+    }
+    .connection-status.disconnected {
+      background-color: #ffcdd2;
+      color: #c62828;
+    }
+    button:disabled, button.disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
   </style>
 </head>
 <body>
 
-<h2>Voice Demo</h2>
+<h2>Voice Demo <span id="connectionStatus" class="connection-status disconnected">Отключено</span></h2>
 
-<button id="talkBtn">Hold to talk</button>
+<button id="talkBtn" disabled class="disabled">Hold to talk</button>
 
 <label style="display:block; margin-top:15px;">
   <input type="checkbox" id="voiceToggle" />
