@@ -1,9 +1,56 @@
-const ws = new WebSocket("ws://localhost:3000");
+const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+const host = window.location.host;
+const ws = new WebSocket(`${protocol}//${host}`);
 
 const talkBtn = document.getElementById("talkBtn");
 const voiceToggle = document.getElementById("voiceToggle");
 const userTextEl = document.getElementById("userText");
 const assistantTextEl = document.getElementById("assistantText");
+const historyContainer = document.getElementById("historyContainer");
+const clearHistoryBtn = document.getElementById("clearHistoryBtn");
+
+// === CONVERSATION HISTORY ===
+let conversationHistory = [];
+let currentUserTranscript = "";
+let currentAssistantResponse = "";
+
+function addToHistory(role, text) {
+  if (!text || text.trim() === "") return;
+
+  conversationHistory.push({ role, content: text });
+  renderHistory();
+}
+
+function renderHistory() {
+  historyContainer.innerHTML = "";
+
+  for (const item of conversationHistory) {
+    const div = document.createElement("div");
+    div.className = `history-item ${item.role}`;
+
+    const roleLabel = document.createElement("div");
+    roleLabel.className = "history-role";
+    roleLabel.textContent = item.role === "user" ? "Вы:" : "Ассистент:";
+
+    const content = document.createElement("div");
+    content.textContent = item.content;
+
+    div.appendChild(roleLabel);
+    div.appendChild(content);
+    historyContainer.appendChild(div);
+  }
+
+  // Scroll to bottom
+  historyContainer.scrollTop = historyContainer.scrollHeight;
+}
+
+function clearHistory() {
+  conversationHistory = [];
+  renderHistory();
+  ws.send(JSON.stringify({ type: "clear_history" }));
+}
+
+clearHistoryBtn.onclick = clearHistory;
 
 let audioContext;
 let processor;
@@ -95,6 +142,8 @@ ws.onmessage = (event) => {
   if (data.type === "user_transcript") {
     userTextEl.textContent = data.text;
     assistantTextEl.textContent = "";
+    currentUserTranscript = data.text;
+    currentAssistantResponse = "";
     console.log("user_transcript", data)
   }
 
@@ -106,6 +155,19 @@ ws.onmessage = (event) => {
   if (data.type === "assistant_final") {
     console.log("assistant_final", data)
     assistantTextEl.textContent = data.text;
+    currentAssistantResponse = data.text;
+
+    // Add completed exchange to history
+    if (currentUserTranscript) {
+      addToHistory("user", currentUserTranscript);
+    }
+    if (currentAssistantResponse) {
+      addToHistory("assistant", currentAssistantResponse);
+    }
+
+    // Reset current transcript trackers
+    currentUserTranscript = "";
+    currentAssistantResponse = "";
   }
 
   if (data.type === "assistant_audio") {
@@ -152,9 +214,11 @@ function stopRecording() {
 
   isRecording = false;
 
+  // Send commit with conversation history
   ws.send(JSON.stringify({
     type: "commit",
-    voice: voiceToggle.checked
+    voice: voiceToggle.checked,
+    // history: conversationHistory
   }));
 
   processor.disconnect();
